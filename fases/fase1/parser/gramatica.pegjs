@@ -29,11 +29,16 @@ opciones = union (_ "/" _ union)*
 
 union = expresion (_ expresion !(_ literales? _ "=") )*
 
-expresion  = (etiqueta/varios)? _ expresiones _ ([?+*]/conteo)?
+expresion = ("@")? _ id:(identificador _ ":")?_ varios? _ expresiones _ ([?+*]/conteo)?
+
+//ERRORES ENCONTRADOS: podia venir @pluck:@"expresion"  o 
+/*expresion  = (etiqueta/varios)? _ expresiones _ ([?+*]/conteo)?
 
 etiqueta = ("@")? _ id:identificador _ ":" (varios)?
 
-varios = ("!"/"$"/"@"/"&")
+ varios = ("!"/"$"/"@"/"&")*/
+
+varios = ("!"/"&"/"$")
 
 expresiones  =  id:identificador { usos.push(id) }
                 / literales "i"?
@@ -57,7 +62,7 @@ conteo = "|" _ (numero / id:identificador) _ "|"
 
 // Regla principal que analiza corchetes con contenido
 corchetes
-    = "[" contenido:(rango / contenido)+ "]" {
+    = "[" contenido:(rango / texto)+ "]" {
         return `Entrada válida: [${input}]`;
     }
 
@@ -68,33 +73,47 @@ rango
             throw new Error(`Rango inválido: [${inicio}-${fin}]`);
 
         }
-        return `${inicio}-${fin}`;
+        return `${inicio}-${fin}`;//se debe crear la lista
     }
 
 // Regla para caracteres individuales
 caracter
     = [a-zA-Z0-9_ ] { return text()}
 
-// Coincide con cualquier contenido que no incluya "]"
-contenido
-    = (corchete / texto)+
 
-corchete
-    = "[" contenido "]"
+
+/* GRAMATICAS ANTERIORES, DAN ERROR AL TRATAR DE RECONOCER EJ: [abc0-3], reconocimiento esperado: [a,b,c,1,2,3]
+                                                                  Salida que se obtiene: [a,b,c,1,-,3]
+
+ contenido
+   = elementos:(corchete / texto)+ {
+      return new n.Contenido(elementos);
+  }
+
+ corchete
+    = "[" contenido "]" 
+*/
+
+// Coincide con cualquier contenido que no incluya "]"
 
 texto
-    = [^\[\]]+
+    = [^\[\]]
 
 literales = '"' stringDobleComilla* '"'
             / "'" stringSimpleComilla* "'"
 
 stringDobleComilla = !('"' / "\\" / finLinea) .
                     / "\\" escape
-                    / continuacionLinea
+                    //(se quitaron porque peggyjs no acepta cadenas con multilinea) igual no funcionaba xd
+                    // / continuacionLinea
 
 stringSimpleComilla = !("'" / "\\" / finLinea) .
                     / "\\" escape
-                    / continuacionLinea
+                    //(se quitaron porque peggyjs no acepta cadenas con multilinea) igual no funcionaba xd
+                    // / continuacionLinea
+
+//(se quitaron porque peggyjs no acepta cadenas con multilinea) igual no funcionaba xd
+// continuacionLinea = "\\" secuenciaFinLinea
 
 continuacionLinea = "\\" secuenciaFinLinea
 
