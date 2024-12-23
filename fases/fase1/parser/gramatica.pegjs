@@ -7,10 +7,12 @@
     import { ids, usos} from '../index.js'
     import { ErrorReglas } from './error.js';
     import { errores } from '../index.js'
+
+    import * as n from '../parser/visitor/CST.js';
 }}
 
-gramatica = _ producciones+ _ {
-
+gramatica
+  = _ prods:producciones+ _ {
     let duplicados = ids.filter((item, index) => ids.indexOf(item) !== index);
     if (duplicados.length > 0) {
         errores.push(new ErrorReglas("Regla duplicada: " + duplicados[0]));
@@ -21,31 +23,57 @@ gramatica = _ producciones+ _ {
     if (noEncontrados.length > 0) {
         errores.push(new ErrorReglas("Regla no encontrada: " + noEncontrados[0]));
     }
-}
+    return prods;
+  }
 
-producciones = _ id:identificador _ (literales)? _ "=" _ opciones (_";")? { ids.push(id) }
+producciones
+  = _ id:identificador _ alias:$(literales)? _ "=" _ expr:opciones (_";")? {
+    ids.push(id);
+    return new n.Producciones(id, expr, alias);
+  }
 
-opciones = union (_ "/" _ union)*
+opciones
+  = expr:union rest:(_ "/" _ @union)* {
+    return new n.Opciones([expr, ...rest]);
+  }
 
-union = expresion (_ expresion !(_ literales? _ "=") )*
+union
+  = expr:expresion rest:(_ @expresion !(_ literales? _ "=") )* {
+    return new n.Union([expr, ...rest]);
+  }
 
-expresion = ("@")? _ id:(identificador _ ":")?_ varios? _ expresiones _ ([?+*]/conteo)?
-
-//ERRORES ENCONTRADOS: podia venir @pluck:@"expresion"  o 
-/*expresion  = (etiqueta/varios)? _ expresiones _ ([?+*]/conteo)?
+expresion
+  = label:$(etiqueta/varios)? _ expr:expresiones _ qty:$([?+*]/conteo)? {
+    return new n.Expresion(expr, label, qty);
+  }
 
 etiqueta = ("@")? _ id:identificador _ ":" (varios)?
 
- varios = ("!"/"$"/"@"/"&")*/
+varios = ("!"(!".") /"$"/"@"/"&")
 
-varios = ("!"/"&"/"$")
+expresiones
+  = id:identificador {
+    usos.push(id);
+    return new n.idRel(id);
+  }
+  / val:$literales isCase:"i"? {
+    return new n.String(val.replace(/['"]/g, ''), isCase);
+  }
+  / "(" _ opciones:opciones _ ")"{
+    return new n.grupo(opciones);
+  }
 
-expresiones  =  id:identificador { usos.push(id) }
-                / literales "i"?
-                / "(" _ opciones _ ")"
-                / corchetes "i"?
-                / "."
-                / "!."
+  / exprs:corchetes isCase:"i"?{
+    //console.log("Corchetes", exprs);
+    return new n.Corchetes(exprs, isCase);
+
+  }
+  / "." {
+    return new n.Any(true);
+  }
+  / "!."{
+    return new n.finCadena();
+  }
 
 // conteo = "|" parteconteo _ (_ delimitador )? _ "|"
 
@@ -62,58 +90,44 @@ conteo = "|" _ (numero / id:identificador) _ "|"
 
 // Regla principal que analiza corchetes con contenido
 corchetes
-    = "[" contenido:(rango / texto)+ "]" {
-        return `Entrada válida: [${input}]`;
+    = "[" contenido:(rango / contenido)+ "]" {
+        return contenido;
     }
 
 // Regla para validar un rango como [A-Z]
 rango
-    = inicio:caracter "-" fin:caracter {
-        if (inicio.charCodeAt(0) > fin.charCodeAt(0)) {
-            throw new Error(`Rango inválido: [${inicio}-${fin}]`);
-
-        }
-        return `${inicio}-${fin}`;//se debe crear la lista
+    = inicio:$caracter "-" fin:$caracter {
+        return new  n.rango(inicio, fin);
     }
 
 // Regla para caracteres individuales
 caracter
-    = [a-zA-Z0-9_ ] { return text()}
-
-
-
-/* GRAMATICAS ANTERIORES, DAN ERROR AL TRATAR DE RECONOCER EJ: [abc0-3], reconocimiento esperado: [a,b,c,1,2,3]
-                                                                  Salida que se obtiene: [a,b,c,1,-,3]
-
- contenido
-   = elementos:(corchete / texto)+ {
-      return new n.Contenido(elementos);
-  }
-
- corchete
-    = "[" contenido "]" 
-*/
+    = [a-zA-Z0-9_ ] 
 
 // Coincide con cualquier contenido que no incluya "]"
+contenido
+    = contenido: (corchete / @$texto){
+        return new n.literalRango(contenido);
+    }
+
+corchete
+    = "[" contenido "]"
 
 texto
-    = [^\[\]]
+    = "\\" escape
+    /[^\[\]]
 
-literales = '"' stringDobleComilla* '"'
-            / "'" stringSimpleComilla* "'"
+literales
+  = '"' @stringDobleComilla* '"'
+  / "'" @stringSimpleComilla* "'"
 
 stringDobleComilla = !('"' / "\\" / finLinea) .
                     / "\\" escape
-                    //(se quitaron porque peggyjs no acepta cadenas con multilinea) igual no funcionaba xd
-                    // / continuacionLinea
+                    / continuacionLinea
 
 stringSimpleComilla = !("'" / "\\" / finLinea) .
                     / "\\" escape
-                    //(se quitaron porque peggyjs no acepta cadenas con multilinea) igual no funcionaba xd
-                    // / continuacionLinea
-
-//(se quitaron porque peggyjs no acepta cadenas con multilinea) igual no funcionaba xd
-// continuacionLinea = "\\" secuenciaFinLinea
+                    / continuacionLinea
 
 continuacionLinea = "\\" secuenciaFinLinea
 
