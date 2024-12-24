@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2024 José Góngora, Franklin Noj, Leonel Lopez
+Copyright (c) 2024 [FortranPEG Contributors](https://github.com/ECYS-FIUSAC/fortranpeg/contributors)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

@@ -1,0 +1,12 @@
+{
+    "compilerOptions": {
+      "module": "ESNext",
+      "lib": ["ESNext", "DOM"],
+      // Tells TypeScript to read JS files, as
+      // normally they are ignored as source files
+      "allowJs": true,
+      "checkJs": true,
+      "noImplicitOverride": true,
+      "allowSyntheticDefaultImports": true
+    }
+  }
