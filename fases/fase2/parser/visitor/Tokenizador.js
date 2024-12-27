@@ -224,9 +224,20 @@ end module parser
             cambioLength = node.val.length;
         }
 
-        const condition = node.isCase 
-        ? `tolower(${cambioNodeVal}) == tolower(input(cursor:cursor + ${ cambioLength - 1} ))`
-        :  `${cambioNodeVal} == input(cursor:cursor + ${cambioLength - 1} )`;
+        let condition = ""
+
+        if(node.isCase){
+            condition = `tolower(${cambioNodeVal}) == tolower(input(cursor:cursor + ${ cambioLength - 1} ))`
+        }else{
+
+            if(cambioNodeVal == "char(10)"){
+                condition = `char(13) == input(cursor:cursor + ${cambioLength - 1} ) .or. ${cambioNodeVal} == input(cursor:cursor + ${cambioLength - 1} )`
+            }else{
+
+                condition = `${cambioNodeVal} == input(cursor:cursor + ${cambioLength - 1} )`
+            }
+
+        }
         return this.renderQuantifierOption(node.qty, condition, cambioLength)
     }
 
