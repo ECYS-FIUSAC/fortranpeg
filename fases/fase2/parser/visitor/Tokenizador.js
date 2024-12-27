@@ -302,15 +302,53 @@ end module parser
             cursor = cursor + ${length}
         end if` ;
 
-        var one = `
-        if (cursor <= len_trim(input) .and. (${condition})) then 
-            buffer = buffer // input(cursor:cursor + ${length - 1})
-            buffer = replace_special_characters(buffer)
-            cursor = cursor + ${length}
-        else
-            concat_failed = .true.
-            buffer = ""
-        end if` ;
+        var one = `` ;
+
+        try {
+            const result = condition.split(/(?<=\\n")/);
+            if(result[0] == "\"\\n\""){
+                one = `
+if (cursor <= len_trim(input) .and. (${condition})) then 
+    buffer = buffer // input(cursor:cursor + 1)
+    buffer = replace_special_characters(buffer)
+    cursor = cursor + 2
+else if (cursor <= len_trim(input) .and. (ichar(input(cursor:cursor)) == 10)) then
+    buffer = buffer // achar(10)  ! Agregar el carácter de nueva línea
+    buffer = replace_special_characters(buffer)
+    cursor = cursor + 1  ! Solo avanzar 1, ya que solo hay un carácter
+else if (cursor <= len_trim(input) .and. (ichar(input(cursor:cursor)) == 13)) then
+    buffer = buffer // achar(13)  ! Agregar el carácter de retorno de carro
+    buffer = replace_special_characters(buffer)
+    cursor = cursor + 1  ! Solo avanzar 1, ya que solo hay un carácter 
+else
+    concat_failed = .true.
+    buffer = ""
+end if
+                
+                `
+            }else{
+                one = `
+if (cursor <= len_trim(input) .and. (${condition})) then 
+    buffer = buffer // input(cursor:cursor + ${length - 1})
+    buffer = replace_special_characters(buffer)
+    cursor = cursor + ${length}
+else
+    concat_failed = .true.
+    buffer = ""
+end if` ;
+            }
+        } catch (error) {
+            console.log("Ocurrio un error");
+            one = `
+                if (cursor <= len_trim(input) .and. (${condition})) then 
+                    buffer = buffer // input(cursor:cursor + ${length - 1})
+                    buffer = replace_special_characters(buffer)
+                    cursor = cursor + ${length}
+                else
+                    concat_failed = .true.
+                    buffer = ""
+                end if` ;
+        }
     
         
         switch (qty) {
